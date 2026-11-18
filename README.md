@@ -1,1 +1,1 @@
-regions.py : Automatically add MOS region outputs/specs to a Cadence ADE Maestro setup
+Populate_Maestro_specs: A Python utility that automatically identifies MOSFET devices in Cadence Virtuoso and configures operating-point outputs across DC simulation tests in ADE Maestro. It supports customizable expressions (e.g., operating region, gm/Id and saturation margin), automatic plotting, and tolerance or range specifications. All settings can be enabled, disabled, or modified through a simple `specs.txt` configuration file, eliminating repetitive manual setup.
