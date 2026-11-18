@@ -1,0 +1,26 @@
+# MOS output configuration for regions.py
+# Expressions are Cadence Calculator strings, NOT Python expressions.
+# {device} -> /I0/M1 ; {op} -> OP (or OS with --sweep).
+# 'enabled = no' removes the corresponding script-named output.
+# 'spec = none' clears its previous specification but keeps the output.
+# 'spec = tol TARGET PERCENT'  e.g. tol 2 0.1 means 2 +/- 0.1%
+# 'spec = range MIN MAX'       e.g. range 5 25 means 5 <= value <= 25
+# 'plot = no' keeps an output without enabling its plot.
+
+[region]
+enabled = yes
+expression = {op}("{device}" "region")
+spec = tol 2 0.1
+plot = yes
+
+[gm_id]
+enabled = yes
+expression = {op}("{device}" "gmoverid")
+spec = none
+plot = yes
+
+[vsat_margin]
+enabled = yes
+expression = {op}("{device}" "vsat_marg")
+spec = none
+plot = yes
