@@ -1,0 +1,205 @@
+# =============================================================================
+# tia_specs.txt - configuration for tia_tb_gen.py
+#
+# Every value the generator needs comes from this file. Edit the [testbench],
+# [pins] and [variables] sections for your TIA, then run (from the directory
+# where you start Virtuoso):
+#
+#     python3 tia_tb_gen.py tia_specs.txt --inspect   # check pins/devices/variables
+#     python3 tia_tb_gen.py tia_specs.txt             # build the testbench
+#
+# Syntax: "key = value", '#' starts a comment. Numbers accept SI suffixes
+# (f p n u m k M G T; note M = mega, m = milli).
+# Spec syntax used below:
+#     none                  no spec
+#     gt VALUE | lt VALUE   output > VALUE | output < VALUE
+#     range MIN MAX         MIN <= output <= MAX
+#     tol TARGET PERCENT    TARGET +/- PERCENT %
+# =============================================================================
+
+[testbench]
+tb_library   = MY_LIB          # library in which the testbench cell is created
+tb_cell      = TB_MY_TIA       # new testbench cell name
+tia_library  = MY_LIB          # library of the TIA (default: tb_library)
+tia_cell     = MY_TIA          # TIA cell (needs symbol + schematic views)
+differential = yes             # yes = fully differential, no = single ended
+overwrite    = no              # yes = replace an existing testbench cell
+
+# Simulation models: "path [section]", several separated by ';'.
+# Leave empty to use the default model setup of your Cadence environment.
+model_files  =
+
+# Instance name of the iprobe that YOU place inside the CMFB loop of the TIA
+# (differential only). Test FB_STB_CMFB uses probe /I0/<cmfb_probe>.
+cmfb_probe   = IPRB_CMFB
+
+# Optional settings (defaults shown):
+# tia_symbol_view    = symbol
+# tia_schematic_view = schematic
+# ol_view            = schematic         # open-loop testbench view
+# fb_view            = schematic_w_fb    # closed-loop testbench view
+# maestro_view       = maestro
+# simulator          = spectre
+# source_library     = analogLib         # sources, passives and probes
+# ol_dc_inductor     = 1M                # open loop: DC feedback inductors
+# ol_ac_capacitor    = 1                 # open loop: AC ground capacitors
+# ignore_vars        =                   # names wrongly detected as design variables
+
+
+[pins]
+# Which pin of the TIA symbol is which. Feedback is connected
+# neg_out -> pos_in and pos_out -> neg_in (pos_in -> neg_out is inverting).
+# Single-ended TIA: neg_in = current input, pos_out = output,
+#                   pos_in = reference input (or none), neg_out = none.
+VDD     = VDD
+VSS     = VSS
+pos_in  = INP
+neg_in  = INN
+pos_out = OUTP
+neg_out = OUTN
+
+
+[extra_pins]
+# Every other pin of the TIA must be connected here, one line per pin:
+#   PIN = VDD | VSS | gnd          tie to a supply / global ground
+#   PIN = net NAME                 connect to testbench net NAME
+#   PIN = vdc VALUE                voltage source VALUE to VSS
+#   PIN = idc_in VALUE             DC current flowing into the pin
+#   PIN = idc_out VALUE            DC current flowing out of the pin
+#   PIN = noconn                   leave open
+# Examples:
+# VCM_REF = vdc avdd/2
+# IBIAS   = idc_in 10u
+# EN      = VDD
+# TRIM<3:0> = VSS
+
+
+[variables]
+# Global Maestro variables. The testbench uses the first block; add every
+# design variable used inside the TIA (the script lists them with --inspect
+# and refuses to build while one is missing).
+avdd  = 1.0       # supply voltage
+CL    = 700f      # load capacitance on each output
+RFR   = 5k        # feedback resistor
+CFR   = 600f      # feedback capacitor
+Rs    = 1G        # source resistance at each input
+Cs    = 0         # source capacitance at each input
+iamp  = 20u       # transient input current amplitude
+fin   = 5M        # transient input frequency
+vcmin = 0.5       # single ended only: voltage on pos_in (if pos_in is used)
+# TIA design variables, e.g.
+# W_in = 2u
+
+
+[analyses]
+dc_freq          = 1k            # frequency used for the "DC" values (Av0, Zt_DC, LG0)
+ac_start         = 1k
+ac_stop          = 10G
+ac_ppd           = 20            # points per decade
+noise_start      = 1k
+noise_stop       = 1G
+noise_ppd        = 20
+noise_freqs      = 100k 1M 10M   # spot input-referred noise -> in_<f>
+noise_rms_band   = 10k 50M       # integrated input noise   -> in_rms_<lo>_<hi>
+vout_noise_freqs = 1M            # spot output noise         -> vout_n_<f>
+zin_freqs        = 100k 1M 50M   # input impedance           -> Zin(_diff)_<f>
+stb_start        = 1k
+stb_stop         = 10G
+stb_ppd          = 20
+tran_stop        = 2u
+tran_meas_start  = 1u            # Vpp / THD / HD3 window = tran_meas_start .. tran_stop
+tran_maxstep     = 1n
+tran_errpreset   = conservative
+tran_fft_points  = 1024
+
+
+[tests]
+# yes/no for each Maestro test.
+# Differential: OL_DC_AC FB_AC FB_NOISE FB_STB_DM FB_STB_CM FB_STB_CMFB FB_TRAN
+# Single ended: OL_DC_AC FB_AC FB_NOISE FB_STB FB_TRAN
+OL_DC_AC    = yes
+FB_AC       = yes
+FB_NOISE    = yes
+FB_STB_DM   = yes
+FB_STB_CM   = yes
+FB_STB_CMFB = yes   # created disabled until the CMFB iprobe exists in the TIA
+FB_STB      = yes
+FB_TRAN     = yes
+
+
+[corners]
+# Every combination of the values below becomes a corner; the one equal
+# to the nominal setup is skipped. Keys: temperature or any [variables] name.
+enabled      = yes
+skip_nominal = yes
+nominal_temperature = 27
+temperature  = -40 27 85
+avdd         = 0.9 1.0 1.1
+
+
+[specs]
+# TEST.OUTPUT = spec      (output names are printed by the script)
+FB_AC.BW_3dB          = range 45M 55M
+FB_AC.Peaking_dB      = lt 0.5
+FB_AC.Zin_diff_1MHz   = range 300 366
+FB_STB_DM.PM_DM       = gt 65
+FB_STB_CM.PM_CM       = gt 65
+FB_STB_CM.LG0_CM_dB   = lt 0
+FB_STB_CMFB.PM_CMFB   = gt 65
+# single ended equivalents:
+# FB_AC.Zin_1MHz      = range 300 366
+# FB_STB.PM           = gt 65
+
+
+# Custom outputs (optional). Same name as a built-in output = override it;
+# enabled = no removes it. test may list several tests.
+# [output:V_ctrl_CMFB]
+# test       = FB_AC
+# expression = VDC("/I0/<cmfb_control_net>")
+# spec       = range 0.3 0.6
+# plot       = yes
+
+
+# =============================================================================
+# Per-transistor outputs. Every MOSFET in the TIA hierarchy gets one output per
+# enabled [mos_metric:NAME] section, named NAME_<instance path>.
+# =============================================================================
+[mos]
+tests       = OL_DC_AC        # OL_DC_AC and/or FB_AC
+op_function = OS              # OS or OP, replaces {op} in the expressions
+max_depth   = 12              # hierarchy levels searched below the TIA
+# A transistor is any leaf instance with terminals D G S [B]. To use cell
+# names instead, or to exclude cells, give case-insensitive regexes:
+# cell_regex    =
+# exclude_regex =
+
+# Metric sections:
+#   expression  Calculator expression; {device} = /I0/<path>, {op} = op_function
+#   spec        default spec for every transistor
+#   spec.GLOB   spec for matching transistors only (path below the TIA, e.g.
+#               spec.M1 or spec.X2/* ; the last matching line wins);
+#               "skip" = no output for those transistors
+#   plot        yes/no ; enabled = yes/no
+
+[mos_metric:region]
+enabled    = yes
+expression = {op}("{device}" "region")
+spec       = tol 2 0.1        # 2 = saturation
+plot       = yes
+
+[mos_metric:vsat_marg]
+# Saturation margin |Vds| - |Vdsat|, positive = saturated for NMOS and PMOS.
+# (The raw op parameter "vsat_marg" = Vds - Vdsat is negative for a saturated
+#  PMOS; use expression = {op}("{device}" "vsat_marg") if you want it anyway.)
+enabled    = yes
+expression = (abs({op}("{device}" "vds")) - abs({op}("{device}" "vdsat")))
+spec       = gt 50m
+plot       = yes
+# spec.M_TAIL = gt 100m
+
+[mos_metric:gmoverid]
+enabled    = yes
+expression = {op}("{device}" "gmoverid")
+spec       = none
+plot       = yes
+# spec.M_IN* = range 10 20
